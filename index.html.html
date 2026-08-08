@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clutch Arena — Tournament Bracket Builder</title>
+<style>
+:root{
+  --bg:#08090d; --panel:#11131a; --panel2:#171a23; --line:#282d3a;
+  --text:#f6f7fb; --muted:#8f96a8; --accent:#ff334d; --accent2:#ff6b7b;
+  --danger:#ff5470; --gold:#ffd45c; --blue:#6ca7ff;
+}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 20% 0%,#1b2410 0,#08090d 34%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,select{font:inherit} button{cursor:pointer}
+.app{min-height:100vh}.topbar{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(8,9,13,.88);backdrop-filter:blur(16px);position:sticky;top:0;z-index:20}
+.brand{display:flex;gap:12px;align-items:center}.logo{width:38px;height:38px;border-radius:12px;background:var(--accent);color:#ffffff;display:grid;place-items:center;font-weight:1000;box-shadow:0 0 30px #ff334d44}.brand b{font-size:18px;letter-spacing:.4px}.brand span{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.actions{display:flex;gap:8px}.btn{border:1px solid var(--line);background:var(--panel);color:var(--text);padding:10px 14px;border-radius:10px;font-weight:700}.btn:hover{border-color:#50586b}.btn.primary{background:var(--accent);border-color:var(--accent);color:#ffffff}.btn.danger{color:#ff8295}.btn.small{padding:7px 9px;font-size:12px}
+.layout{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 72px)}.sidebar{border-right:1px solid var(--line);padding:22px;overflow:auto;background:#0b0d12}.section{margin-bottom:24px}.section h3{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin:0 0 10px}
+label{font-size:12px;color:#b7bdca;display:block;margin:10px 0 6px}.input,.select{width:100%;background:#0f1117;border:1px solid var(--line);color:var(--text);padding:11px 12px;border-radius:10px;outline:none}.input:focus,.select:focus{border-color:var(--accent)}
+.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.preset{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:11px;border-radius:10px;text-align:left}.preset.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.preset strong{display:block;font-size:12px}.preset small{color:var(--muted);font-size:10px}
+.addrow{display:flex;gap:7px}.addrow .input{flex:1}.addrow .btn{padding-inline:12px}
+.participants{display:flex;flex-direction:column;gap:7px;margin-top:10px}.player{display:flex;align-items:center;gap:8px;padding:9px;background:var(--panel);border:1px solid var(--line);border-radius:9px}.avatar{width:26px;height:26px;border-radius:8px;background:#252a35;display:grid;place-items:center;font-size:11px;font-weight:900}.player span{flex:1;font-size:12px}.remove{border:0;background:none;color:#707788;font-size:18px}.remove:hover{color:var(--danger)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}.stat b{font-size:18px}.stat small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.main{min-width:0;overflow:auto}.hero{padding:28px 30px 18px;border-bottom:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-between;gap:20px}.eyebrow{color:var(--accent);font-size:11px;font-weight:900;letter-spacing:2px;text-transform:uppercase}.hero h1{margin:7px 0 3px;font-size:31px;letter-spacing:-1px}.hero p{margin:0;color:var(--muted);font-size:13px}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.bracket-wrap{padding:28px 30px 70px;overflow:auto}.bracket{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(270px,300px);gap:34px;min-width:max-content;align-items:start}.round{width:auto;min-width:270px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-content:start}.round-title{height:35px;grid-column:1 / -1;display:flex;align-items:center;justify-content:space-between;color:#b9c0ce;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1.3px}.round-title span{color:#626a7b;font-size:10px}
+.match-slot{position:relative;width:100%;min-width:0}.match{background:linear-gradient(145deg,#151821,#101219);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 10px 28px #0005}.team{height:42px;display:flex;align-items:center;padding:0 10px;gap:8px;border-bottom:1px solid #252936}.team:last-child{border-bottom:0}.team .name{flex:1;font-size:12px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.score{width:30px;text-align:center;font-weight:900}.team.winner{background:#281116}.team.winner .score{color:var(--accent)}.team.loser{opacity:.55}.team.empty{color:#5f6675;font-weight:600}.match-meta{display:flex;justify-content:space-between;padding:6px 10px;color:#686f7e;font-size:9px;background:#0d0f14}.play{border:0;background:var(--accent);color:#ffffff;font-size:9px;font-weight:900;padding:4px 7px;border-radius:6px}.play.done{background:#252b35;color:#aeb5c3}.round.r2,.round.r3,.round.r4,.round.r5{padding-top:0}.champ{border-color:#5b4c19;background:linear-gradient(145deg,#1b1810,#111219)}.champ .match-meta{color:var(--gold)}
+.match{position:relative}
+.match-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#0c0e13;border-bottom:1px solid #252936}
+.match-head strong{font-size:9px;letter-spacing:1px;color:#b5bccb}.match-head span{font-size:9px;color:#697181}
+.legs{padding:7px 9px 8px;background:#11141b}
+.leg-row{display:grid;grid-template-columns:48px 1fr 1fr 40px;gap:5px;align-items:center;margin-bottom:5px}
+.leg-row:last-child{margin-bottom:0}.leg-row label{margin:0;font-size:9px;color:#7f8796;text-transform:uppercase}
+.score-input{width:100%;min-width:0;background:#0b0d12;border:1px solid #303645;color:#fff;padding:6px 4px;text-align:center;border-radius:6px;font-weight:900;font-size:12px;outline:none}
+.score-input:focus{border-color:var(--accent)}.leg-agg{font-size:11px;text-align:center;color:#c5cad5;font-weight:900}
+.aggregate{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-top:1px solid #282d3a;background:#0d1015}
+.aggregate small{font-size:8px;color:#6f7787;text-transform:uppercase;letter-spacing:.8px}.aggregate b{font-size:12px}.aggregate .live{color:var(--accent)}
+
+.winner-card{margin:28px 0 8px;background:radial-gradient(circle at 85% 15%,#4b1018 0,#1b1015 32%,#11131a 72%);border:1px solid #5c2630;border-radius:18px;padding:22px;position:relative;overflow:hidden;box-shadow:0 20px 55px #0008}
+.winner-card:before{content:"";position:absolute;inset:-80px auto auto -80px;width:190px;height:190px;background:#ff334d1c;border-radius:50%;filter:blur(4px)}
+.winner-top{display:flex;align-items:center;justify-content:space-between;gap:15px;position:relative}
+.winner-kicker{font-size:10px;color:#ff6b7b;font-weight:1000;letter-spacing:2px;text-transform:uppercase}.winner-title{font-size:27px;font-weight:1000;margin:4px 0 0;letter-spacing:-.8px}.winner-sub{font-size:11px;color:#8f96a8;margin-top:5px}
+.trophy{width:62px;height:62px;border-radius:18px;display:grid;place-items:center;background:#ff334d;color:white;font-size:28px;box-shadow:0 0 35px #ff334d55}
+.winner-score{margin-top:18px;display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;background:#0b0d12;border:1px solid #2c313d;border-radius:13px;padding:14px}.winner-side{text-align:center}.winner-side small{display:block;color:#747c8d;font-size:9px;text-transform:uppercase;letter-spacing:1px}.winner-side b{font-size:25px}.winner-side:first-child b{color:#ff6b7b}.vs{color:#555d6d;font-weight:900}.winner-badge{display:inline-block;margin-top:14px;padding:7px 11px;border-radius:999px;background:#ff334d;color:white;font-size:9px;font-weight:1000;letter-spacing:1.4px;text-transform:uppercase}
+.empty-state{border:1px dashed #343a49;border-radius:14px;padding:50px;text-align:center;color:var(--muted);max-width:600px;margin:40px auto}.empty-state b{display:block;color:var(--text);font-size:18px;margin-bottom:8px}
+.modal-back{position:fixed;inset:0;background:#0009;display:none;place-items:center;z-index:50;padding:20px}.modal-back.show{display:grid}.modal{width:min(430px,100%);background:#12151d;border:1px solid #323847;border-radius:16px;padding:22px;box-shadow:0 30px 80px #000b}.modal h2{margin:0 0 6px;font-size:19px}.modal p{color:var(--muted);font-size:12px;margin:0 0 18px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.toast{position:fixed;right:20px;bottom:20px;background:#1b202b;border:1px solid #3a4251;padding:12px 15px;border-radius:10px;font-size:12px;display:none;z-index:80}.toast.show{display:block}
+@media(max-width:1250px){.round{grid-template-columns:1fr}.round-title{grid-column:1}}
+@media(min-width:1251px){.round{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid var(--line)}.hero{align-items:flex-start;flex-direction:column}.topbar{padding:0 16px}.actions .hide-mobile{display:none}}
+@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.topbar,.sidebar,.toolbar,.modal-back,.toast{display:none!important}.layout{display:block}.main{overflow:visible}.hero{padding:20px}.bracket-wrap{padding:20px}.bracket{gap:25px}.match{box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <div class="brand"><div class="logo">CA</div><div><b>CLUTCH ARENA</b><span>TOURNAMENT CONTROL</span></div></div>
+  <div class="actions">
+    <button class="btn small hide-mobile" onclick="newTournament()">New Tournament</button>
+    <button class="btn small" onclick="exportJSON()">Export</button>
+    <button class="btn primary small" onclick="printBracket()">Print Bracket</button>
+  </div>
+</header>
+
+<div class="layout">
+<aside class="sidebar">
+  <div class="section">
+    <h3>Tournament</h3>
+    <input id="title" class="input" value="Clutch Arena — Summer Showdown" oninput="state.title=this.value;renderHeader()">
+    <label>Game</label>
+    <select id="game" class="select" onchange="state.game=this.value;renderHeader()">
+      <option>FC 26</option><option>Mortal Kombat 11</option><option>Blur</option><option>Tekken 8</option><option>Call of Duty</option><option>Other</option>
+    </select>
+    <label>Format</label>
+    <select id="format" class="select" onchange="state.format=this.value;renderAll()">
+      <option value="single">Single Elimination</option><option value="double">Double Elimination (Beta)</option>
+    </select>
+  </div>
+
+  <div class="section">
+    <h3>Quick presets</h3>
+    <div class="preset-grid">
+      <button class="preset" onclick="preset(4)"><strong>4 Players</strong><small>Semis → Final</small></button>
+      <button class="preset" onclick="preset(8)"><strong>8 Players</strong><small>Quarter → Final</small></button>
+      <button class="preset" onclick="preset(16)"><strong>16 Players</strong><small>Full bracket</small></button>
+      <button class="preset" onclick="preset(32)"><strong>32 Players</strong><small>Full bracket</small></button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Participants <span id="count"></span></h3>
+    <div class="addrow"><input id="participant" class="input" placeholder="Player / team name" onkeydown="if(event.key==='Enter')addParticipant()"><button class="btn primary" onclick="addParticipant()">Add</button></div>
+    <div id="participants" class="participants"></div>
+  </div>
+
+  <div class="section">
+    <h3>Overview</h3>
+    <div class="stats"><div class="stat"><b id="statPlayers">0</b><small>Players</small></div><div class="stat"><b id="statMatches">0</b><small>Matches</small></div><div class="stat"><b id="statComplete">0</b><small>Completed</small></div><div class="stat"><b id="statRounds">0</b><small>Rounds</small></div></div>
+  </div>
+
+  <div class="section">
+    <button class="btn primary" style="width:100%" onclick="generateBracket()">Generate / Rebuild Bracket</button>
+    <button class="btn danger" style="width:100%;margin-top:8px" onclick="resetResults()">Reset Match Results</button>
+  </div>
+</aside>
+
+<main class="main">
+  <section class="hero">
+    <div><div class="eyebrow" id="gameLabel">FC 26 • SINGLE ELIMINATION</div><h1 id="heading">Clutch Arena — Summer Showdown</h1><p>Live tournament bracket • click a match to record the winner</p></div>
+    <div class="toolbar"><button class="btn small" onclick="shufflePlayers()">Shuffle Seeding</button><button class="btn small" onclick="exportJSON()">Save JSON</button></div>
+  </section>
+  <section class="bracket-wrap"><div id="winner"></div><div id="bracket"></div></section>
+</main>
+</div>
+</div>
+
+<div id="modalBack" class="modal-back">
+ <div class="modal">
+  <h2 id="modalTitle">Match Control</h2><p id="modalDesc">Enter scores for both legs. The aggregate determines the winner.</p>
+  <div id="modalChoices"></div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button></div>
+ </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const sample=["Rex","Shadow","Blaze","Phantom","Viper","Nova","Ghost","Ace"];
+let state={title:"Clutch Arena — Summer Showdown",game:"FC 26",format:"single",players:[...sample],matches:[],generated:false};
+
+function save(){localStorage.setItem("clutchArenaState",JSON.stringify(state))}
+function load(){try{let s=JSON.parse(localStorage.getItem("clutchArenaState"));if(s) state={...state,...s}}catch(e){}}
+function initials(n){return n.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase()}
+function toast(t){let e=document.getElementById("toast");e.textContent=t;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),1800)}
+function renderHeader(){document.getElementById("heading").textContent=state.title;document.getElementById("gameLabel").textContent=`${state.game} • ${state.format==="single"?"SINGLE ELIMINATION":"DOUBLE ELIMINATION"}`;save()}
+function renderPlayers(){let el=document.getElementById("participants");document.getElementById("count").textContent=`(${state.players.length})`;el.innerHTML=state.players.map((p,i)=>`<div class="player"><div class="avatar">${initials(p)}</div><span>${escapeHTML(p)}</span><button class="remove" onclick="removePlayer(${i})">×</button></div>`).join("")}
+function renderStats(){let complete=state.matches.filter(m=>m.winner).length;document.getElementById("statPlayers").textContent=state.players.length;document.getElementById("statMatches").textContent=state.matches.length;document.getElementById("statComplete").textContent=complete;document.getElementById("statRounds").textContent=state.matches.length?Math.max(...state.matches.map(m=>m.round))+1:0}
+function escapeHTML(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+
+function addParticipant(){let x=document.getElementById("participant").value.trim();if(!x)return;if(state.players.includes(x)){toast("Player already exists");return}state.players.push(x);document.getElementById("participant").value="";renderPlayers();save()}
+function removePlayer(i){if(state.generated){toast("Rebuild the bracket after changing players");}state.players.splice(i,1);state.generated=false;state.matches=[];renderAll()}
+function preset(n){state.players=Array.from({length:n},(_,i)=>`Player ${String(i+1).padStart(2,"0")}`);state.generated=false;state.matches=[];renderAll();toast(`${n}-player preset loaded`)}
+function shufflePlayers(){for(let i=state.players.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[state.players[i],state.players[j]]=[state.players[j],state.players[i]]}state.generated=false;state.matches=[];renderAll();toast("Seeding shuffled")}
+function newTournament(){
+ if(!confirm("Start a new tournament? Current bracket, participants and results will be cleared.")) return;
+ state={title:"Clutch Arena — New Tournament",game:"FC 26",format:"single",players:[],matches:[],generated:false};
+ localStorage.removeItem("clutchArenaState");
+ document.getElementById("title").value=state.title;
+ document.getElementById("game").value=state.game;
+ document.getElementById("format").value=state.format;
+ renderAll();
+ toast("New tournament created");
+}
+function generateBracket(){
+ if(state.players.length<2){toast("Add at least 2 participants");return}
+ if(state.players.length>32){toast("Maximum supported is 32 participants");return}
+ let n=1;while(n<state.players.length)n*=2;
+ let seeds=[...state.players];while(seeds.length<n)seeds.push("BYE");
+ let rounds=[];let current=seeds;
+ while(current.length>1){let r=[];for(let i=0;i<current.length;i+=2)r.push({a:current[i],b:current[i+1],winner:null,scoreA:"",scoreB:""});rounds.push(r);current=r.map(()=>null)}
+ state.matches=[];rounds.forEach((r,ri)=>r.forEach((m,mi)=>state.matches.push({id:`r${ri}m${mi}`,round:ri,index:mi,a:m.a,b:m.b,winner:m.winner,scoreA:m.scoreA,scoreB:m.scoreB,leg1:{a:0,b:0},leg2:{a:0,b:0}})));
+ state.generated=true;autoByes();save();renderAll();toast("Bracket generated")}
+function autoByes(){
+ state.matches.filter(m=>m.round===0).forEach(m=>{if(m.a==="BYE"&&m.b!=="BYE")m.winner=m.b;else if(m.b==="BYE"&&m.a!=="BYE")m.winner=m.a;else if(m.a==="BYE"&&m.b==="BYE")m.winner="BYE"});
+ propagate();
+}
+function propagate(){
+ let firstCount=state.matches.filter(x=>x.round===0).length;
+ let total=Math.ceil(Math.log2(Math.max(2,firstCount)))+1;
+ for(let r=0;r<total-1;r++){
+   let prev=state.matches.filter(m=>m.round===r), next=state.matches.filter(m=>m.round===r+1);
+   if(!next.length)continue;
+   prev.forEach((m,i)=>{
+     let target=next[Math.floor(i/2)];
+     if(!target)return;
+     let val=m.winner||null;
+     if(i%2===0)target.a=val; else target.b=val;
+   });
+   next.forEach(m=>{
+     if(m.a==="BYE"&&m.b&&m.b!=="BYE")m.winner=m.b;
+     else if(m.b==="BYE"&&m.a&&m.a!=="BYE")m.winner=m.a;
+     else if(!m.a||!m.b)m.winner=null;
+   });
+ }
+}
+function recordMatch(id){
+ let m=state.matches.find(x=>x.id===id);if(!m||!m.a||!m.b||m.a==="BYE"||m.b==="BYE")return;
+ m.leg1=m.leg1||{a:0,b:0};m.leg2=m.leg2||{a:0,b:0};
+ document.getElementById("modalTitle").textContent=`Match Control • ${m.a} vs ${m.b}`;
+ document.getElementById("modalDesc").textContent="Enter the live scores for Leg 1 and Leg 2. Scores are saved as you type.";
+ document.getElementById("modalChoices").innerHTML=`
+   <div style="background:#0d1016;border:1px solid #292f3b;border-radius:11px;padding:12px">
+    <div style="display:grid;grid-template-columns:1fr 70px 70px;gap:7px;align-items:center;margin-bottom:8px">
+      <span style="font-size:10px;color:#7f8796">PLAYER</span><span style="font-size:10px;color:#7f8796;text-align:center">LEG 1</span><span style="font-size:10px;color:#7f8796;text-align:center">LEG 2</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 70px 70px;gap:7px;align-items:center;margin-bottom:7px">
+      <strong style="font-size:12px">${escapeHTML(m.a)}</strong>
+      <input class="score-input" id="modalA1" type="number" min="0" value="${m.leg1.a}" oninput="liveModalScores('${id}')">
+      <input class="score-input" id="modalA2" type="number" min="0" value="${m.leg2.a}" oninput="liveModalScores('${id}')">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 70px 70px;gap:7px;align-items:center">
+      <strong style="font-size:12px">${escapeHTML(m.b)}</strong>
+      <input class="score-input" id="modalB1" type="number" min="0" value="${m.leg1.b}" oninput="liveModalScores('${id}')">
+      <input class="score-input" id="modalB2" type="number" min="0" value="${m.leg2.b}" oninput="liveModalScores('${id}')">
+    </div>
+    <div id="modalAggregate" style="margin-top:12px;padding-top:10px;border-top:1px solid #292f3b;font-size:12px;text-align:center;color:#bfc5d2"></div>
+   </div>
+   <button class="btn primary" style="width:100%;margin-top:10px" onclick="saveMatchScores('${id}')">Save Match & Advance Winner</button>`;
+ updateModalAggregate(id);
+ document.getElementById("modalBack").classList.add("show")
+}
+function modalVals(){
+ return {
+  a1:Math.max(0,parseInt(document.getElementById("modalA1").value)||0),
+  a2:Math.max(0,parseInt(document.getElementById("modalA2").value)||0),
+  b1:Math.max(0,parseInt(document.getElementById("modalB1").value)||0),
+  b2:Math.max(0,parseInt(document.getElementById("modalB2").value)||0)
+ }
+}
+function updateModalAggregate(id){
+ let m=state.matches.find(x=>x.id===id),v=modalVals();
+ let aa=v.a1+v.a2,bb=v.b1+v.b2;
+ document.getElementById("modalAggregate").innerHTML=`Aggregate: <strong>${escapeHTML(m.a)} ${aa} — ${bb} ${escapeHTML(m.b)}</strong>`;
+}
+function liveModalScores(id){updateModalAggregate(id)}
+function saveMatchScores(id){
+ let m=state.matches.find(x=>x.id===id),v=modalVals();
+ m.leg1={a:v.a1,b:v.b1};m.leg2={a:v.a2,b:v.b2};
+ m.scoreA=v.a1+v.a2;m.scoreB=v.b1+v.b2;
+ if(m.scoreA>m.scoreB)m.winner=m.a;
+ else if(m.scoreB>m.scoreA)m.winner=m.b;
+ else m.winner=null;
+ propagate();save();closeModal();renderBracket();renderWinner();renderStats();
+ toast(m.winner?`${m.winner} advances on aggregate!`:"Aggregate tied — match requires a tiebreaker.");
+}
+function closeModal(){document.getElementById("modalBack").classList.remove("show")}
+function resetResults(){
+ if(!state.generated || !state.matches.length){toast("There are no match results to reset");return}
+ if(!confirm("Reset all match results and both legs?")) return;
+ state.matches.forEach(m=>{
+   m.winner=null;m.scoreA="";m.scoreB="";
+   m.leg1={a:0,b:0};m.leg2={a:0,b:0};
+ });
+ // Restore only first-round BYE winners, then propagate those through the bracket.
+ state.matches.forEach(m=>{
+   if(m.round===0){
+     if(m.a==="BYE"&&m.b&&m.b!=="BYE")m.winner=m.b;
+     else if(m.b==="BYE"&&m.a&&m.a!=="BYE")m.winner=m.a;
+   }
+ });
+ propagate();
+ save();
+ renderAll();
+ toast("All match results have been reset");
+}
+function printBracket(){
+ try{
+   window.print();
+ }catch(e){
+   toast("Print is unavailable in this browser");
+ }
+}
+function roundName(r,total){if(r===total-1)return"GRAND FINAL";if(r===total-2)return"SEMIFINALS";if(r===total-3)return"QUARTERFINALS";return`ROUND ${r+1}`}
+function renderWinner(){
+ let el=document.getElementById("winner");
+ if(!state.generated||!state.matches.length){el.innerHTML="";return}
+ let final=state.matches.reduce((a,b)=>a.round>b.round?a:b);
+ if(!final || !final.winner){el.innerHTML="";return}
+ let a=final.a,b=final.b, aa=(final.leg1?.a||0)+(final.leg2?.a||0), bb=(final.leg1?.b||0)+(final.leg2?.b||0);
+ let winner=final.winner, loser=winner===a?b:a, winnerAgg=winner===a?aa:bb, loserAgg=winner===a?bb:aa;
+ el.innerHTML=`<div class="winner-card">
+   <div class="winner-top">
+     <div><div class="winner-kicker">Clutch Arena • Tournament Champion</div><div class="winner-title">${escapeHTML(winner)}</div><div class="winner-sub">Congratulations! The Grand Final has been decided on aggregate.</div></div>
+     <div class="trophy">🏆</div>
+   </div>
+   <div class="winner-score">
+     <div class="winner-side"><small>Champion</small><b>${winnerAgg}</b><div style="font-size:10px;color:#8f96a8;margin-top:2px">${escapeHTML(winner)}</div></div>
+     <div class="vs">—</div>
+     <div class="winner-side"><small>Runner-up</small><b>${loserAgg}</b><div style="font-size:10px;color:#8f96a8;margin-top:2px">${escapeHTML(loser||"TBD")}</div></div>
+   </div>
+   <span class="winner-badge">🏆 ${escapeHTML(winner)} • WINNER</span>
+ </div>`;
+}
+function renderBracket(){
+ let el=document.getElementById("bracket");
+ if(!state.generated){el.innerHTML=`<div class="empty-state"><b>Your bracket is ready to be built.</b>Add participants, choose your game, then hit <strong>Generate / Rebuild Bracket</strong>.</div>`;return}
+ let first=state.matches.filter(m=>m.round===0).length,total=Math.log2(first*2);
+ el.innerHTML="";
+ for(let r=0;r<total;r++){
+   let round=document.createElement("div");round.className="round "+(r===1?"r2":r===2?"r3":r===3?"r4":r>=4?"r5":"");
+   round.innerHTML=`<div class="round-title">${roundName(r,total)}<span>${state.matches.filter(m=>m.round===r).length} MATCHES</span></div>`;
+   state.matches.filter(m=>m.round===r).forEach(m=>{
+     let card=document.createElement("div");card.className="match-slot";
+     let a=m.a||"TBD",b=m.b||"TBD",done=!!m.winner;
+     m.leg1=m.leg1||{a:0,b:0};m.leg2=m.leg2||{a:0,b:0};
+     let a1=m.leg1.a||0,a2=m.leg2.a||0,b1=m.leg1.b||0,b2=m.leg2.b||0,aa=a1+a2,bb=b1+b2;
+     card.innerHTML=`<div class="match ${r===total-1?"champ":""}">
+       <div class="match-head"><strong>MATCH ${m.index+1}</strong><span>${m.winner?"COMPLETED":"LIVE / UPCOMING"}</span></div>
+       <div class="team ${m.winner===m.a?"winner":m.winner&&m.winner!==m.a?"loser":""} ${!m.a?"empty":""}"><div class="avatar">${m.a&&m.a!=="TBD"&&m.a!=="BYE"?initials(m.a):"?"}</div><div class="name">${escapeHTML(a)}</div><div class="score">${aa}</div></div>
+       <div class="team ${m.winner===m.b?"winner":m.winner&&m.winner!==m.b?"loser":""} ${!m.b?"empty":""}"><div class="avatar">${m.b&&m.b!=="TBD"&&m.b!=="BYE"?initials(m.b):"?"}</div><div class="name">${escapeHTML(b)}</div><div class="score">${bb}</div></div>
+       <div class="legs">
+         <div class="leg-row"><label>Leg</label><label style="text-align:center">A</label><label style="text-align:center">B</label><label>Agg.</label></div>
+         <div class="leg-row"><label>1st</label><span class="leg-agg">${a1}</span><span class="leg-agg">${b1}</span><span class="leg-agg"></span></div>
+         <div class="leg-row"><label>2nd</label><span class="leg-agg">${a2}</span><span class="leg-agg">${b2}</span><span class="leg-agg"></span></div>
+       </div>
+       <div class="aggregate"><small>Aggregate</small><b class="live">${aa} — ${bb}</b></div>
+       <div class="match-meta"><span>${done?"RESULT SAVED":"UP NEXT"}</span>${m.a&&m.b&&m.a!=="BYE"&&m.b!=="BYE"?`<button class="play ${done?"done":""}" onclick="recordMatch('${m.id}')">${done?"EDIT SCORES":"ENTER SCORES"}</button>`:"<span>WAITING</span>"}</div>
+     </div>`;
+     round.appendChild(card);
+   });
+   el.appendChild(round);
+ }
+}
+function exportJSON(){let blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="clutch-arena-tournament.json";a.click();URL.revokeObjectURL(a.href);toast("Tournament exported")}
+function renderAll(){document.getElementById("title").value=state.title;document.getElementById("game").value=state.game;document.getElementById("format").value=state.format;renderHeader();renderPlayers();renderStats();renderWinner();renderBracket();save()}
+load();renderAll();
+</script>
+</body>
+</html>
