@@ -34,6 +34,7 @@ label{font-size:12px;color:#b7bdca;display:block;margin:10px 0 6px}.input,.selec
 .aggregate{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-top:1px solid #282d3a;background:#0d1015}
 .aggregate small{font-size:8px;color:#6f7787;text-transform:uppercase;letter-spacing:.8px}.aggregate b{font-size:12px}.aggregate .live{color:var(--accent)}
 
+.group-stage{margin-bottom:28px}.group-stage-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:14px}.group-stage-head h2{margin:0;font-size:19px}.group-stage-head p{margin:4px 0 0;color:#7f8796;font-size:11px}.group-grid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:18px}.group-card{background:linear-gradient(145deg,#151821,#0f1117);border:1px solid #2a303d;border-radius:14px;overflow:hidden}.group-card h3{margin:0;padding:12px 14px;background:#0b0d12;border-bottom:1px solid #282d3a;font-size:12px;letter-spacing:1px}.standings{width:100%;border-collapse:collapse;font-size:11px}.standings th{color:#656d7d;font-size:8px;text-transform:uppercase;letter-spacing:.7px;font-weight:800}.standings th,.standings td{padding:8px 6px;text-align:center;border-bottom:1px solid #242936}.standings th:first-child,.standings td:first-child{text-align:left;padding-left:12px}.standings tr:last-child td{border-bottom:0}.qualified{background:#171e12}.qualified .rank,.qualified .pts{color:#ff334d;font-weight:1000}.player-name{font-weight:800}.pts{font-weight:1000}.group-matches{padding:10px 12px;border-top:1px solid #242936}.group-match{display:grid;grid-template-columns:1fr 45px 1fr;gap:5px;align-items:center;padding:7px 0;font-size:9px}.group-match .home{text-align:right}.group-match .gscore{text-align:center;font-weight:1000;color:#ff6b7b}.group-match .away{text-align:left}.group-score-inputs{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:6px}.knockout-label{margin:5px 0 12px;color:#ff6b7b;font-size:10px;font-weight:1000;letter-spacing:1.5px;text-transform:uppercase}@media(max-width:900px){.group-grid{grid-template-columns:1fr}}
 .winner-card{margin:28px 0 8px;background:radial-gradient(circle at 85% 15%,#4b1018 0,#1b1015 32%,#11131a 72%);border:1px solid #5c2630;border-radius:18px;padding:22px;position:relative;overflow:hidden;box-shadow:0 20px 55px #0008}
 .winner-card:before{content:"";position:absolute;inset:-80px auto auto -80px;width:190px;height:190px;background:#ff334d1c;border-radius:50%;filter:blur(4px)}
 .winner-top{display:flex;align-items:center;justify-content:space-between;gap:15px;position:relative}
@@ -70,9 +71,15 @@ label{font-size:12px;color:#b7bdca;display:block;margin:10px 0 6px}.input,.selec
       <option>FC 26</option><option>Mortal Kombat 11</option><option>Blur</option><option>Tekken 8</option><option>Call of Duty</option><option>Other</option>
     </select>
     <label>Format</label>
-    <select id="format" class="select" onchange="state.format=this.value;renderAll()">
-      <option value="single">Single Elimination</option><option value="double">Double Elimination (Beta)</option>
+    <select id="format" class="select" onchange="state.format=this.value;state.generated=false;state.matches=[];state.groups=[];renderAll()">
+      <option value="group_knockout">Group Stage → Knockout</option><option value="single">Single Elimination</option><option value="double">Double Elimination (Beta)</option>
     </select>
+    <div id="groupSettings">
+      <label>Number of Groups</label>
+      <select id="groupCount" class="select" onchange="state.groupCount=+this.value;state.generated=false;renderAll()"><option value="2">2 Groups</option><option value="4">4 Groups</option><option value="8">8 Groups</option></select>
+      <label>Players Advancing Per Group</label>
+      <select id="advanceCount" class="select" onchange="state.advanceCount=+this.value;state.generated=false;renderAll()"><option value="2">Top 2</option><option value="1">Top 1</option></select>
+    </div>
   </div>
 
   <div class="section">
@@ -107,7 +114,7 @@ label{font-size:12px;color:#b7bdca;display:block;margin:10px 0 6px}.input,.selec
     <div><div class="eyebrow" id="gameLabel">FC 26 • SINGLE ELIMINATION</div><h1 id="heading">Clutch Arena — Summer Showdown</h1><p>Live tournament bracket • click a match to record the winner</p></div>
     <div class="toolbar"><button class="btn small" onclick="shufflePlayers()">Shuffle Seeding</button><button class="btn small" onclick="exportJSON()">Save JSON</button></div>
   </section>
-  <section class="bracket-wrap"><div id="winner"></div><div id="bracket"></div></section>
+  <section class="bracket-wrap"><div id="winner"></div><div id="groups"></div><div id="knockoutLabel" class="knockout-label" style="display:none">Knockout Stage • Qualified From Groups</div><div id="bracket"></div></section>
 </main>
 </div>
 </div>
@@ -123,15 +130,15 @@ label{font-size:12px;color:#b7bdca;display:block;margin:10px 0 6px}.input,.selec
 
 <script>
 const sample=["Rex","Shadow","Blaze","Phantom","Viper","Nova","Ghost","Ace"];
-let state={title:"Clutch Arena — Summer Showdown",game:"FC 26",format:"single",players:[...sample],matches:[],generated:false};
+let state={title:"Clutch Arena — Summer Showdown",game:"FC 26",format:"group_knockout",groupCount:4,advanceCount:2,players:[...sample],groups:[],matches:[],generated:false};
 
 function save(){localStorage.setItem("clutchArenaState",JSON.stringify(state))}
-function load(){try{let s=JSON.parse(localStorage.getItem("clutchArenaState"));if(s) state={...state,...s}}catch(e){}}
+function load(){try{let s=JSON.parse(localStorage.getItem("clutchArenaState"));if(s) { state={...state,...s}; state.groupCount=state.groupCount||4; state.advanceCount=state.advanceCount||2; state.groups=state.groups||[] }}catch(e){}}
 function initials(n){return n.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase()}
 function toast(t){let e=document.getElementById("toast");e.textContent=t;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),1800)}
-function renderHeader(){document.getElementById("heading").textContent=state.title;document.getElementById("gameLabel").textContent=`${state.game} • ${state.format==="single"?"SINGLE ELIMINATION":"DOUBLE ELIMINATION"}`;save()}
+function renderHeader(){document.getElementById("heading").textContent=state.title;let fn=state.format==="group_knockout"?"GROUP STAGE → KNOCKOUT":state.format==="single"?"SINGLE ELIMINATION":"DOUBLE ELIMINATION";document.getElementById("gameLabel").textContent=`${state.game} • ${fn}`;let gs=document.getElementById("groupSettings");if(gs)gs.style.display=state.format==="group_knockout"?"block":"none";save()}
 function renderPlayers(){let el=document.getElementById("participants");document.getElementById("count").textContent=`(${state.players.length})`;el.innerHTML=state.players.map((p,i)=>`<div class="player"><div class="avatar">${initials(p)}</div><span>${escapeHTML(p)}</span><button class="remove" onclick="removePlayer(${i})">×</button></div>`).join("")}
-function renderStats(){let complete=state.matches.filter(m=>m.winner).length;document.getElementById("statPlayers").textContent=state.players.length;document.getElementById("statMatches").textContent=state.matches.length;document.getElementById("statComplete").textContent=complete;document.getElementById("statRounds").textContent=state.matches.length?Math.max(...state.matches.map(m=>m.round))+1:0}
+function renderStats(){let groupMatches=state.groups?.reduce((n,g)=>n+g.matches.length,0)||0;let groupComplete=state.groups?.reduce((n,g)=>n+g.matches.filter(m=>m.played).length,0)||0;let complete=state.matches.filter(m=>m.winner).length+groupComplete;document.getElementById("statPlayers").textContent=state.players.length;document.getElementById("statMatches").textContent=state.matches.length+groupMatches;document.getElementById("statComplete").textContent=complete;document.getElementById("statRounds").textContent=state.matches.length?Math.max(...state.matches.map(m=>m.round))+1:0}
 function escapeHTML(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 
 function addParticipant(){let x=document.getElementById("participant").value.trim();if(!x)return;if(state.players.includes(x)){toast("Player already exists");return}state.players.push(x);document.getElementById("participant").value="";renderPlayers();save()}
@@ -148,7 +155,21 @@ function newTournament(){
  renderAll();
  toast("New tournament created");
 }
+function generateGroupStage(){
+ if(state.players.length<4){toast("Add at least 4 participants for a group stage");return}
+ let groups=Math.min(state.groupCount||4,state.players.length); while(groups>1&&Math.ceil(state.players.length/groups)<2)groups--;
+ let buckets=Array.from({length:groups},()=>[]); [...state.players].forEach((p,i)=>{let cycle=Math.floor(i/groups),pos=i%groups,idx=cycle%2===0?pos:groups-1-pos;buckets[idx].push(p)});
+ state.groups=buckets.map((players,i)=>({name:String.fromCharCode(65+i),players,standings:players.map(p=>({player:p,played:0,wins:0,draws:0,losses:0,gf:0,ga:0,gd:0,points:0})),matches:[]}));
+ state.groups.forEach(g=>{for(let i=0;i<g.players.length;i++)for(let j=i+1;j<g.players.length;j++)g.matches.push({id:`G${g.name}-${i}-${j}`,a:g.players[i],b:g.players[j],scoreA:null,scoreB:null,played:false})});
+ state.matches=[];state.generated=true;save();renderAll();toast(`${groups} groups generated`)
+}
+function recalcGroupStandings(g){let map=Object.fromEntries(g.standings.map(x=>[x.player,x]));g.standings.forEach(x=>Object.assign(x,{played:0,wins:0,draws:0,losses:0,gf:0,ga:0,gd:0,points:0}));g.matches.forEach(m=>{if(!m.played)return;let a=map[m.a],b=map[m.b],as=m.scoreA,bs=m.scoreB;a.played++;b.played++;a.gf+=as;a.ga+=bs;b.gf+=bs;b.ga+=as;a.gd=a.gf-a.ga;b.gd=b.gf-b.ga;if(as>bs){a.wins++;a.points+=3;b.losses++}else if(bs>as){b.wins++;b.points+=3;a.losses++}else{a.draws++;b.draws++;a.points++;b.points++}});g.standings.sort((a,b)=>b.points-a.points||b.gd-a.gd||b.gf-a.gf||a.player.localeCompare(b.player))}
+function updateGroupMatch(groupName,id,side,value){let g=state.groups.find(x=>x.name===groupName),m=g?.matches.find(x=>x.id===id);if(!m)return;let v=Math.max(0,parseInt(value)||0);if(side==='a')m.scoreA=v;else m.scoreB=v;m.played=m.scoreA!==null&&m.scoreB!==null;recalcGroupStandings(g);save();renderGroups();renderStats()}
+function qualifiedPlayers(){let out=[];state.groups.forEach(g=>{recalcGroupStandings(g);out.push(...g.standings.slice(0,state.advanceCount||2).map(x=>x.player))});return out}
+function generateKnockoutFromGroups(){let q=qualifiedPlayers();if(q.length<2){toast('Not enough qualified players yet');return}let n=1;while(n<q.length)n*=2;while(q.length<n)q.push('BYE');let rounds=[],current=q;while(current.length>1){let r=[];for(let i=0;i<current.length;i+=2)r.push({a:current[i],b:current[i+1]});rounds.push(r);current=r.map(()=>null)}state.matches=[];rounds.forEach((r,ri)=>r.forEach((m,mi)=>state.matches.push({id:`r${ri}m${mi}`,round:ri,index:mi,a:m.a,b:m.b,winner:null,scoreA:'',scoreB:'',leg1:{a:0,b:0},leg2:{a:0,b:0}})));autoByes();save();renderAll();toast('Knockout bracket updated from group standings')}
+function renderGroups(){let el=document.getElementById('groups');if(!el)return;if(!state.generated||state.format!=='group_knockout'||!state.groups.length){el.innerHTML='';return}el.innerHTML=`<div class="group-stage"><div class="group-stage-head"><div><h2>Group Stage</h2><p>Win = 3 points • Draw = 1 point each • Loss = 0. Top ${state.advanceCount||2} advance.</p></div><button class="btn primary small" onclick="generateKnockoutFromGroups()">Update Knockout Stage</button></div><div class="group-grid">${state.groups.map(g=>{recalcGroupStandings(g);return `<div class="group-card"><h3>GROUP ${g.name}<span style="float:right;color:#626a79">${g.players.length} PLAYERS</span></h3><table class="standings"><thead><tr><th># Player</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>${g.standings.map((x,i)=>`<tr class="${i<(state.advanceCount||2)?'qualified':''}"><td><span class="rank">${i+1}</span> <span class="player-name">${escapeHTML(x.player)}</span></td><td>${x.played}</td><td>${x.wins}</td><td>${x.draws}</td><td>${x.losses}</td><td>${x.gd>0?'+'+x.gd:x.gd}</td><td class="pts">${x.points}</td></tr>`).join('')}</tbody></table><div class="group-matches">${g.matches.map(m=>`<div class="group-match"><span class="home">${escapeHTML(m.a)}</span><span class="gscore">${m.played?m.scoreA+' : '+m.scoreB:'—'}</span><span class="away">${escapeHTML(m.b)}</span><div class="group-score-inputs"><input class="score-input" type="number" min="0" value="${m.scoreA??''}" placeholder="Score" onchange="updateGroupMatch('${g.name}','${m.id}','a',this.value)"><input class="score-input" type="number" min="0" value="${m.scoreB??''}" placeholder="Score" onchange="updateGroupMatch('${g.name}','${m.id}','b',this.value)"></div></div>`).join('')}</div></div>`}).join('')}</div></div>`}
 function generateBracket(){
+ if(state.format==="group_knockout"){generateGroupStage();return}
  if(state.players.length<2){toast("Add at least 2 participants");return}
  if(state.players.length>32){toast("Maximum supported is 32 participants");return}
  let n=1;while(n<state.players.length)n*=2;
@@ -227,17 +248,14 @@ function saveMatchScores(id){
  if(m.scoreA>m.scoreB)m.winner=m.a;
  else if(m.scoreB>m.scoreA)m.winner=m.b;
  else m.winner=null;
- propagate();save();closeModal();renderBracket();renderWinner();renderStats();
+ propagate();save();closeModal();renderGroups();renderBracket();renderWinner();renderStats();
  toast(m.winner?`${m.winner} advances on aggregate!`:"Aggregate tied — match requires a tiebreaker.");
 }
 function closeModal(){document.getElementById("modalBack").classList.remove("show")}
 function resetResults(){
  if(!state.generated || !state.matches.length){toast("There are no match results to reset");return}
  if(!confirm("Reset all match results and both legs?")) return;
- state.matches.forEach(m=>{
-   m.winner=null;m.scoreA="";m.scoreB="";
-   m.leg1={a:0,b:0};m.leg2={a:0,b:0};
- });
+ state.matches.forEach(m=>{m.winner=null;m.scoreA="";m.scoreB="";m.leg1={a:0,b:0};m.leg2={a:0,b:0};});(state.groups||[]).forEach(g=>g.matches.forEach(m=>{m.scoreA=null;m.scoreB=null;m.played=false;}));
  // Restore only first-round BYE winners, then propagate those through the bracket.
  state.matches.forEach(m=>{
    if(m.round===0){
@@ -280,7 +298,7 @@ function renderWinner(){
 }
 function renderBracket(){
  let el=document.getElementById("bracket");
- if(!state.generated){el.innerHTML=`<div class="empty-state"><b>Your bracket is ready to be built.</b>Add participants, choose your game, then hit <strong>Generate / Rebuild Bracket</strong>.</div>`;return}
+ if(!state.generated || (state.format==="group_knockout"&&!state.matches.length)){el.innerHTML=`<div class="empty-state"><b>Your group stage is ready to be built.</b>Generate the groups, enter results, then update the knockout stage.</div>`;return}
  let first=state.matches.filter(m=>m.round===0).length,total=Math.log2(first*2);
  el.innerHTML="";
  for(let r=0;r<total;r++){
@@ -309,7 +327,7 @@ function renderBracket(){
  }
 }
 function exportJSON(){let blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="clutch-arena-tournament.json";a.click();URL.revokeObjectURL(a.href);toast("Tournament exported")}
-function renderAll(){document.getElementById("title").value=state.title;document.getElementById("game").value=state.game;document.getElementById("format").value=state.format;renderHeader();renderPlayers();renderStats();renderWinner();renderBracket();save()}
+function renderAll(){document.getElementById("title").value=state.title;document.getElementById("game").value=state.game;document.getElementById("format").value=state.format;renderHeader();renderPlayers();renderStats();renderGroups();renderWinner();renderBracket();save()}
 load();renderAll();
 </script>
 </body>
