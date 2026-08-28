@@ -130,7 +130,7 @@ label{font-size:12px;color:#b7bdca;display:block;margin:10px 0 6px}.input,.selec
 
 <script>
 const sample=["Rex","Shadow","Blaze","Phantom","Viper","Nova","Ghost","Ace"];
-let state={title:"Clutch Arena — Summer Showdown",game:"FC 26",format:"group_knockout",groupCount:4,advanceCount:2,players:[...sample],groups:[],matches:[],generated:false};
+let state={title:"Clutch Arena — Summer Showdown",game:"FC 26",format:"group_knockout",groupCount:4,advanceCount:2,players:[...sample],groups:[],matches:[],generated:false,randomGroupMatchId:null};
 
 function save(){localStorage.setItem("clutchArenaState",JSON.stringify(state))}
 function load(){try{let s=JSON.parse(localStorage.getItem("clutchArenaState"));if(s) { state={...state,...s}; state.groupCount=state.groupCount||4; state.advanceCount=state.advanceCount||2; state.groups=state.groups||[] }}catch(e){}}
@@ -147,7 +147,7 @@ function preset(n){state.players=Array.from({length:n},(_,i)=>`Player ${String(i
 function shufflePlayers(){for(let i=state.players.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[state.players[i],state.players[j]]=[state.players[j],state.players[i]]}state.generated=false;state.matches=[];renderAll();toast("Seeding shuffled")}
 function newTournament(){
  if(!confirm("Start a new tournament? Current bracket, participants and results will be cleared.")) return;
- state={title:"Clutch Arena — New Tournament",game:"FC 26",format:"single",players:[],matches:[],generated:false};
+ state={title:"Clutch Arena — New Tournament",game:"FC 26",format:"single",players:[],matches:[],generated:false,randomGroupMatchId:null};
  localStorage.removeItem("clutchArenaState");
  document.getElementById("title").value=state.title;
  document.getElementById("game").value=state.game;
@@ -161,13 +161,65 @@ function generateGroupStage(){
  let buckets=Array.from({length:groups},()=>[]); [...state.players].forEach((p,i)=>{let cycle=Math.floor(i/groups),pos=i%groups,idx=cycle%2===0?pos:groups-1-pos;buckets[idx].push(p)});
  state.groups=buckets.map((players,i)=>({name:String.fromCharCode(65+i),players,standings:players.map(p=>({player:p,played:0,wins:0,draws:0,losses:0,gf:0,ga:0,gd:0,points:0})),matches:[]}));
  state.groups.forEach(g=>{for(let i=0;i<g.players.length;i++)for(let j=i+1;j<g.players.length;j++)g.matches.push({id:`G${g.name}-${i}-${j}`,a:g.players[i],b:g.players[j],scoreA:null,scoreB:null,played:false})});
- state.matches=[];state.generated=true;save();renderAll();toast(`${groups} groups generated`)
+ state.matches=[];state.randomGroupMatchId=null;state.generated=true;save();renderAll();toast(`${groups} groups generated`)
 }
 function recalcGroupStandings(g){let map=Object.fromEntries(g.standings.map(x=>[x.player,x]));g.standings.forEach(x=>Object.assign(x,{played:0,wins:0,draws:0,losses:0,gf:0,ga:0,gd:0,points:0}));g.matches.forEach(m=>{if(!m.played)return;let a=map[m.a],b=map[m.b],as=m.scoreA,bs=m.scoreB;a.played++;b.played++;a.gf+=as;a.ga+=bs;b.gf+=bs;b.ga+=as;a.gd=a.gf-a.ga;b.gd=b.gf-b.ga;if(as>bs){a.wins++;a.points+=3;b.losses++}else if(bs>as){b.wins++;b.points+=3;a.losses++}else{a.draws++;b.draws++;a.points++;b.points++}});g.standings.sort((a,b)=>b.points-a.points||b.gd-a.gd||b.gf-a.gf||a.player.localeCompare(b.player))}
-function updateGroupMatch(groupName,id,side,value){let g=state.groups.find(x=>x.name===groupName),m=g?.matches.find(x=>x.id===id);if(!m)return;let v=Math.max(0,parseInt(value)||0);if(side==='a')m.scoreA=v;else m.scoreB=v;m.played=m.scoreA!==null&&m.scoreB!==null;recalcGroupStandings(g);save();renderGroups();renderStats()}
-function qualifiedPlayers(){let out=[];state.groups.forEach(g=>{recalcGroupStandings(g);out.push(...g.standings.slice(0,state.advanceCount||2).map(x=>x.player))});return out}
-function generateKnockoutFromGroups(){let q=qualifiedPlayers();if(q.length<2){toast('Not enough qualified players yet');return}let n=1;while(n<q.length)n*=2;while(q.length<n)q.push('BYE');let rounds=[],current=q;while(current.length>1){let r=[];for(let i=0;i<current.length;i+=2)r.push({a:current[i],b:current[i+1]});rounds.push(r);current=r.map(()=>null)}state.matches=[];rounds.forEach((r,ri)=>r.forEach((m,mi)=>state.matches.push({id:`r${ri}m${mi}`,round:ri,index:mi,a:m.a,b:m.b,winner:null,scoreA:'',scoreB:'',leg1:{a:0,b:0},leg2:{a:0,b:0}})));autoByes();save();renderAll();toast('Knockout bracket updated from group standings')}
-function renderGroups(){let el=document.getElementById('groups');if(!el)return;if(!state.generated||state.format!=='group_knockout'||!state.groups.length){el.innerHTML='';return}el.innerHTML=`<div class="group-stage"><div class="group-stage-head"><div><h2>Group Stage</h2><p>Win = 3 points • Draw = 1 point each • Loss = 0. Top ${state.advanceCount||2} advance.</p></div><button class="btn primary small" onclick="generateKnockoutFromGroups()">Update Knockout Stage</button></div><div class="group-grid">${state.groups.map(g=>{recalcGroupStandings(g);return `<div class="group-card"><h3>GROUP ${g.name}<span style="float:right;color:#626a79">${g.players.length} PLAYERS</span></h3><table class="standings"><thead><tr><th># Player</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>${g.standings.map((x,i)=>`<tr class="${i<(state.advanceCount||2)?'qualified':''}"><td><span class="rank">${i+1}</span> <span class="player-name">${escapeHTML(x.player)}</span></td><td>${x.played}</td><td>${x.wins}</td><td>${x.draws}</td><td>${x.losses}</td><td>${x.gd>0?'+'+x.gd:x.gd}</td><td class="pts">${x.points}</td></tr>`).join('')}</tbody></table><div class="group-matches">${g.matches.map(m=>`<div class="group-match"><span class="home">${escapeHTML(m.a)}</span><span class="gscore">${m.played?m.scoreA+' : '+m.scoreB:'—'}</span><span class="away">${escapeHTML(m.b)}</span><div class="group-score-inputs"><input class="score-input" type="number" min="0" value="${m.scoreA??''}" placeholder="Score" onchange="updateGroupMatch('${g.name}','${m.id}','a',this.value)"><input class="score-input" type="number" min="0" value="${m.scoreB??''}" placeholder="Score" onchange="updateGroupMatch('${g.name}','${m.id}','b',this.value)"></div></div>`).join('')}</div></div>`}).join('')}</div></div>`}
+function randomNextGroupMatch(){
+  if(!state.groups?.length){toast("Generate the group stage first");return}
+  let pending=state.groups.flatMap(g=>g.matches.filter(m=>!m.played).map(m=>({group:g.name,id:m.id,a:m.a,b:m.b})));
+  if(!pending.length){state.randomGroupMatchId=null;renderGroups();toast("All group games are complete");return}
+  let pick=pending[Math.floor(Math.random()*pending.length)];
+  state.randomGroupMatchId=pick.id;
+  save();renderGroups();
+  toast(`🎲 Random game: ${pick.a} vs ${pick.b} (Group ${pick.group})`);
+}
+function updateGroupMatch(groupName,id,side,value){let g=state.groups.find(x=>x.name===groupName),m=g?.matches.find(x=>x.id===id);if(!m)return;let v=Math.max(0,parseInt(value)||0);if(side==='a')m.scoreA=v;else m.scoreB=v;m.played=m.scoreA!==null&&m.scoreB!==null;recalcGroupStandings(g);if(m.played && state.randomGroupMatchId===m.id)state.randomGroupMatchId=null;save();renderGroups();renderStats()}
+function qualifiedPlayers(){
+  let out=[];
+  state.groups.forEach(g=>{
+    recalcGroupStandings(g);
+    out.push(...g.standings.slice(0,state.advanceCount||2).map(x=>x.player));
+  });
+  return out;
+}
+function knockoutSeeds(){
+  state.groups.forEach(g=>recalcGroupStandings(g));
+  let top=state.groups.map(g=>g.standings[0]?.player).filter(Boolean);
+  if((state.advanceCount||2)===1) return top; // A1-B1, C1-D1, etc.
+  let q=[];
+  state.groups.forEach(g=>q.push(...g.standings.slice(0,state.advanceCount||2).map(x=>x.player)));
+  return q;
+}
+function generateKnockoutFromGroups(){
+  let q=knockoutSeeds();
+  if(q.length<2){toast('Not enough qualified players yet');return}
+  let n=1;while(n<q.length)n*=2;while(q.length<n)q.push('BYE');
+  let rounds=[],current=q;
+  while(current.length>1){
+    let r=[];
+    for(let i=0;i<current.length;i+=2)r.push({a:current[i],b:current[i+1]});
+    rounds.push(r);current=r.map(()=>null);
+  }
+  state.matches=[];
+  rounds.forEach((r,ri)=>r.forEach((m,mi)=>state.matches.push({
+    id:`r${ri}m${mi}`,round:ri,index:mi,a:m.a,b:m.b,winner:null,
+    scoreA:'',scoreB:'',leg1:{a:0,b:0},leg2:{a:0,b:0}
+  })));
+  autoByes();save();renderAll();
+  toast((state.advanceCount||2)===1
+    ? 'Knockout seeded: Group A #1 vs Group B #1, Group C #1 vs Group D #1, etc.'
+    : 'Knockout bracket updated from group standings');
+}
+function renderGroups(){let el=document.getElementById('groups');if(!el)return;if(!state.generated||state.format!=='group_knockout'||!state.groups.length){el.innerHTML='';return}el.innerHTML=`<div class="group-stage"><div class="group-stage-head"><div><h2>Group Stage</h2><p>Win = 3 points • Draw = 1 point each • Loss = 0. Top ${state.advanceCount||2} advance.</p></div><div class="toolbar"><button class="btn small" onclick="randomNextGroupMatch()">🎲 Random Next Game</button><button class="btn primary small" onclick="generateKnockoutFromGroups()">Update Knockout Stage</button></div></div><div class="group-grid">${state.groups.map(g=>{recalcGroupStandings(g);return `<div class="group-card"><h3>GROUP ${g.name}<span style="float:right;color:#626a79">${g.players.length} PLAYERS</span></h3><table class="standings"><thead><tr><th># Player</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>${g.standings.map((x,i)=>`<tr class="${i<(state.advanceCount||2)?'qualified':''}"><td><span class="rank">${i+1}</span> <span class="player-name">${escapeHTML(x.player)}</span></td><td>${x.played}</td><td>${x.wins}</td><td>${x.draws}</td><td>${x.losses}</td><td>${x.gd>0?'+'+x.gd:x.gd}</td><td class="pts">${x.points}</td></tr>`).join('')}</tbody></table><div class="group-matches">
+${g.matches.filter(m=>m.id===state.randomGroupMatchId || (!state.randomGroupMatchId && !m.played)).slice(0,1).map(m=>`
+<div class="group-match" style="background:#171a23;border:1px solid #343b4b;border-radius:10px;padding:10px;margin-bottom:6px">
+  <span class="home">${escapeHTML(m.a)}</span><span class="gscore">${m.played?m.scoreA+' : '+m.scoreB:'VS'}</span><span class="away">${escapeHTML(m.b)}</span>
+  <div class="group-score-inputs">
+    <input class="score-input" type="number" min="0" value="${m.scoreA??''}" placeholder="Score" onchange="updateGroupMatch('${g.name}','${m.id}','a',this.value)">
+    <input class="score-input" type="number" min="0" value="${m.scoreB??''}" placeholder="Score" onchange="updateGroupMatch('${g.name}','${m.id}','b',this.value)">
+  </div>
+</div>`).join('') || '<div style="padding:10px;color:#707788;font-size:10px">No pending game selected for this group.</div>'}
+</div></div>`}).join('')}</div></div>`}
 function generateBracket(){
  if(state.format==="group_knockout"){generateGroupStage();return}
  if(state.players.length<2){toast("Add at least 2 participants");return}
